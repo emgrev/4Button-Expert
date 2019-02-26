@@ -1,6 +1,6 @@
-## uses only RP and AK planning units and unit tasks, so far
+## uses RP, HW, and AK planning units and unit tasks
 ## perception of the game is hacked, so far
-
+## emily made changes
 
 
 import sys
@@ -53,11 +53,17 @@ class MotorModule(ccm.Model):
         print slot_value
         self.parent.parent.motor_finst.state = 'change_state_fast'
 
+##    def vision_slow(self):
+##        yield 5
+##        print 'target identified'
+##        self.parent.parent.motor_finst.state = 'vision_slow'
+##        self.parent.b_vision.set('YP')
+
     def vision_slow(self):
         yield 5
         print 'target identified'
         self.parent.parent.motor_finst.state = 'vision_slow'
-        self.parent.b_vision.set('YP')
+        self.parent.b_vision.set('FJ')
 
     def motor_finst_reset(self):
         self.parent.parent.motor_finst.state = 're_set'
@@ -110,12 +116,19 @@ class MyAgent(ACTR): # this is the agent that does the task
 ##        DM.add('planning_unit:XY         cuelag:X             cue:Y              unit_task:finished')
 
         DM.add('planning_unit:AK         cuelag:none          cue:start          unit_task:AK')
-        DM.add('planning_unit:AK         cuelag:start         cue:AK              unit_task:RP')
-        DM.add('planning_unit:AK         cuelag:AK             cue:RP              unit_task:finished')
+        DM.add('planning_unit:AK         cuelag:start         cue:AK              unit_task:HW')
+        DM.add('planning_unit:AK         cuelag:AK             cue:HW              unit_task:RP')
+        DM.add('planning_unit:AK         cuelag:HW              cue:RP              unit_task:finished')
 
         DM.add('planning_unit:RP         cuelag:none          cue:start          unit_task:RP')
-        DM.add('planning_unit:RP         cuelag:start         cue:RP              unit_task:AK')
-        DM.add('planning_unit:RP         cuelag:RP             cue:AK              unit_task:finished')
+        DM.add('planning_unit:RP         cuelag:start         cue:RP              unit_task:HW')
+        DM.add('planning_unit:RP         cuelag:RP             cue:HW              unit_task:AK')
+        DM.add('planning_unit:RP         cuelag:HW              cue:AK              unit_task:finished')
+
+        DM.add('planning_unit:HW         cuelag:none          cue:start          unit_task:HW')
+        DM.add('planning_unit:HW         cuelag:start         cue:HW              unit_task:RP')
+        DM.add('planning_unit:HW         cuelag:HW             cue:RP              unit_task:AK')
+        DM.add('planning_unit:HW         cuelag:RP              cue:AK              unit_task:finished')
         
         b_context.set('finshed:nothing status:unoccupied warning_light:off')
         b_emotion.set('threat:ok')
@@ -139,11 +152,18 @@ class MyAgent(ACTR): # this is the agent that does the task
         b_context.set('finished:nothing status:occupied')
         print 'PU_AK ordered planning unit is chosen OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO'
 
-    def run_PU_RP(b_context='finshed:AK status:unoccupied'):
+    def run_PU_HW(b_context='finshed:AK status:unoccupied'):
+        b_unit_task.set('unit_task:HW state:running typee:ordered')
+        b_plan_unit.set('planning_unit:HW cuelag:none cue:start unit_task:HW state:running')
+        b_context.set('finished:nothing status:occupied')
+        print 'PU_HW ordered planning unit is chosen OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO'
+
+    def run_PU_RP(b_context='finshed:HW status:unoccupied'):
         b_unit_task.set('unit_task:RP state:running typee:ordered')
         b_plan_unit.set('planning_unit:RP cuelag:none cue:start unit_task:RP state:running')
         b_context.set('finished:nothing status:occupied')
         print 'PU_RP ordered planning unit is chosen OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO'
+
 
     def end(b_context='finshed:RP status:unoccupied'):
         b_context.set('end')
@@ -233,8 +253,6 @@ class MyAgent(ACTR): # this is the agent that does the task
 
 
 
-
-
 ####################################### unit tasks
 
 
@@ -297,8 +315,8 @@ class MyAgent(ACTR): # this is the agent that does the task
 ## situated matching productions
 
     def RP_start_unit_task_situated(b_unit_task='state:find_match typee:situated'):
-        b_unit_task.set('unit_task:Y state:running typee:situated')
-        print 'start unit task Y'
+        b_unit_task.set('unit_task:RP state:running typee:situated')
+        print 'start unit task RP'
 
 ## body of the unit task
         
@@ -320,7 +338,7 @@ class MyAgent(ACTR): # this is the agent that does the task
                         b_focus='SU',
                         b_method='state:finished'):
         b_focus.set('unkown_code')
-        b_method.set('method:get_code target:response content:1432 state:start')
+        b_method.set('method:get_code target:response content:4123 state:start')
         print 'getting code'
 
 
@@ -329,7 +347,7 @@ class MyAgent(ACTR): # this is the agent that does the task
                      b_method='state:finished',
                      b_vision='YP'):
         b_focus.set('YP')
-        b_method.set('method:known_response target:response content:1432 state:start')
+        b_method.set('method:known_response target:response content:3412 state:start')
         print 'doing YP'
 
     def RP_known_response_FJ(b_unit_task='unit_task:RP state:running',
@@ -351,14 +369,14 @@ class MyAgent(ACTR): # this is the agent that does the task
                      b_method='state:finished',
                      b_vision='ZB'):
         b_focus.set('ZB')
-        b_method.set('method:known_response target:response content:1432 state:start')
+        b_method.set('method:known_response target:response content:2143 state:start')
         print 'doing ZB'
 
     def RP_known_response_WM(b_unit_task='unit_task:RP state:running',
                              b_focus='ZB',
                              b_method='state:finished'):
         b_focus.set('WM')
-        b_method.set('method:known_response target:response content:2143 state:start')
+        b_method.set('method:known_response target:response content:1432 state:start')
         print 'doing WM'
 
     def RP_finished2(b_unit_task='unit_task:Y state:running',
@@ -366,7 +384,84 @@ class MyAgent(ACTR): # this is the agent that does the task
                      b_method='state:finished'):
         b_focus.set('none')
         b_unit_task.modify(state='end')  ## this line ends the unit task
-        b_unit_task.modify(state='stop')  ## this line ends the unit task
+        print ' - finished unit task'
+
+#                     / FJ
+# HW unit task HW-YP--- ZB
+#                     \ SU
+
+## situated matching productions
+
+    def HW_start_unit_task_situated(b_unit_task='state:find_match typee:situated'):
+        b_unit_task.set('unit_task:HW state:running typee:situated')
+        print 'start unit task HW'
+
+## body of the unit task
+
+    def HW_known_response_HW(b_unit_task='unit_task:HW state:running',
+                             b_focus='none'):
+        b_focus.set('HW')
+        b_method.set('method:known_response target:response content:2341 state:start')
+        print 'doing HW_UT    HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH'
+        print 'doing HW'
+
+    def HW_known_response_YP(b_unit_task='unit_task:HW state:running',
+                             b_focus='HW',
+                             b_method='state:finished'):
+        b_focus.set('YP')
+        b_method.set('method:known_response target:response content:3412 state:start')
+        print 'doing YP'
+
+    def HW_unknown_code(b_unit_task='unit_task:HW state:running',
+                        b_focus='YP',
+                        b_method='state:finished'):
+        b_focus.set('unkown_code')
+        b_method.set('method:get_code target:response content:3412 state:start')
+        print 'getting code'
+
+    def HW_got_code1(b_unit_task='unit_task:HW state:running',
+                     b_focus='unkown_code',
+                     b_method='state:finished',
+                     b_vision='FJ'):
+        b_focus.set('FJ')
+        b_method.set('method:known_response target:response content:3214 state:start')
+        print 'doing FJ'
+
+    def HW_finished1(b_unit_task='unit_task:HW state:running',
+                     b_focus='FJ',
+                     b_method='state:finished'):
+        b_focus.set('none')
+        b_unit_task.modify(state='end')  ## this line ends the unit task
+        print ' - finished unit task'
+
+    def HW_got_code2(b_unit_task='unit_task:HW state:running',
+                     b_focus='unkown_code',
+                     b_method='state:finished',
+                     b_vision='ZB'):
+        b_focus.set('ZB')
+        b_method.set('method:known_response target:response content:2143 state:start')
+        print 'doing ZB'
+
+    def HW_finished2(b_unit_task='unit_task:HW state:running',
+                     b_focus='ZB',
+                     b_method='state:finished'):
+        b_focus.set('none')
+        b_unit_task.modify(state='end')  ## this line ends the unit task
+        print ' - finished unit task'
+        
+    def HW_got_code3(b_unit_task='unit_task:HW state:running',
+                     b_focus='unkown_code',
+                     b_method='state:finished',
+                     b_vision='SU'):
+        b_focus.set('SU')
+        b_method.set('method:known_response target:response content:4123 state:start')
+        print 'doing SU'
+
+    def HW_finished3(b_unit_task='unit_task:HW state:running',
+                     b_focus='SU',
+                     b_method='state:finished'):
+        b_focus.set('none')
+        b_unit_task.modify(state='end')  ## this line ends the unit task
         print ' - finished unit task'
 
 
@@ -403,6 +498,7 @@ class MyAgent(ACTR): # this is the agent that does the task
         b_method.modify(state='finished')
         print 'I have spotted the target, I have the new code'
         print code
+       
 
 
 ############## run model #############
