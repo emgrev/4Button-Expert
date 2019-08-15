@@ -1,0 +1,510 @@
+##############################
+##### (c) E. Greve, 2019 #####
+##### FOUR BUTTON PLAYER #####
+### SGOMS production model ###
+##############################
+
+import sys
+import ccm
+from random import randrange, uniform
+#log = ccm.log()
+log=ccm.log(html=True)
+from ccm.lib.actr import *
+
+class hyrule (ccm.Model):
+
+### player
+    zelda=ccm.Model(isa='agent',
+                    agent='zelda',
+                    name='zelda')
+### objects for use
+    motor_finst=ccm.Model(isa='motor_finst',
+                          state='re_set')
+
+### objects for task preformance
+    response = ccm.Model(isa='response', state='none', salience=0.99)
+    display = ccm.Model(isa='diplay', state='state', salience=0.99)
+    response_entered = ccm.Model(isa='response_entered', state='no', salience=0.99)
+
+    motor_finst = ccm.Model(isa='motor_finst', state='re_set')
+
+########################
+##### MOTOR MODULE #####
+########################
+
+class MotorModule(ccm.Model): # defines actions in the environment
+
+# change_state is a generic action that changes the state slot of any object
+# disadvantages (1) yield #time is always the same (2) cannot use for parallel actions
+
+
+    def enter_response(self, env_object, slot_value):
+        yield 3
+        x = eval('self.parent.parent.' + env_object)
+        x.state = slot_value
+        print env_object
+        print slot_value
+        self.parent.parent.motor_finst.state = 'enter_response'
+
+## Visual Cues
+##### Type 1: ACTIVE TASK
+    def see_code(self):
+        yield 5
+        print 'Object Identified'
+        self.parent.parent.motor_finst.state = 'see_code'
+        self.parent.visual = 'spotted'
+
+
+#### movement
+
+    def motor_finst_reset(self):
+        self.parent.parent.motor_finst.state = 're_set' 
+
+
+class MyAgent(ACTR):
+
+# BUFFERS (create buffers and add initial content)
+    focus=Buffer()
+    motor=MotorModule()
+    visual=Buffer()
+
+##    VMbuffer=Buffer()
+##    VM-Memory(VMbuffer)
+
+    DMbuffer=Buffer()
+    DM=Memory(DMbuffer)
+
+    # BUFFERS
+
+    # goal system buffers
+    b_context = Buffer()
+    b_plan_unit = Buffer()
+    b_unit_task = Buffer()
+    b_method = Buffer()
+    b_operator = Buffer()
+
+    # module Buffers
+    b_DM = Buffer()
+    b_motor = Buffer()
+    visual = Buffer()
+
+    # initial buffer contents
+    b_context.set('status:start have_plan:no planning_unit:none')
+    b_plan_unit.set('planning_unit:P cuelag:P cue:P unit_task:P state:P ptype:P')
+
+
+# MODULES (import modules into agent, connect to buffers, and add initial content)
+    
+    # vision module - from CCM suite
+    vision_module=SOSVision(visual,delay=.085)
+    
+    # motor module - defined above
+    motor = MotorModule(b_motor)
+
+    # declarative memory module - from CCM suite
+    DM = Memory(b_DM)
+
+
+    # initial memory contents
+##        DM.add('planning_unit:XY         cuelag:none          cue:start          unit_task:X')
+##        DM.add('planning_unit:XY         cuelag:start         cue:X              unit_task:Y')
+##        DM.add('planning_unit:XY         cuelag:X             cue:Y              unit_task:finished')
+
+    DM.add('planning_unit:AK         cuelag:none          cue:start          unit_task:AK')
+    DM.add('planning_unit:AK         cuelag:start         cue:AK              unit_task:HW')
+    DM.add('planning_unit:AK         cuelag:AK             cue:HW              unit_task:RP')
+    DM.add('planning_unit:AK         cuelag:HW              cue:RP              unit_task:finished')
+
+    DM.add('planning_unit:RP         cuelag:none          cue:start          unit_task:RP')
+    DM.add('planning_unit:RP         cuelag:start         cue:RP              unit_task:HW')
+    DM.add('planning_unit:RP         cuelag:RP             cue:HW              unit_task:AK')
+    DM.add('planning_unit:RP         cuelag:HW              cue:AK              unit_task:finished')
+
+    DM.add('planning_unit:HW         cuelag:none          cue:start          unit_task:HW')
+    DM.add('planning_unit:HW         cuelag:start         cue:HW              unit_task:RP')
+    DM.add('planning_unit:HW         cuelag:HW             cue:RP              unit_task:AK')
+    DM.add('planning_unit:HW         cuelag:RP              cue:AK              unit_task:finished')
+
+    DM.add('planning_unit:start      cuelag:none          cue:start          unit_task:wait')
+    DM.add('planning_unit:start      cuelag:start         cue:wait            unit_task:finished')
+    
+
+########### create productions for choosing planning units ###########
+
+    ## these productions are the highest level of SGOMS and fire off the context buffer
+    ## they can take any ACT-R form (one production or more) but must eventually call a planning unit and update the context buffer
+
+    def run_START_PU(b_context='status:start planning_unit:none'): 
+        b_plan_unit.modify(planning_unit='start',cuelag='none',cue='start',unit_task='wait',state='begin_sequence',ptype='ordered')
+        b_context.modify(status='occupied')
+        print 'STARTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+
+    def run_AK_PU(b_context='status:unoccupied planning_unit:none'): 
+        b_plan_unit.modify(planning_unit='AK',cuelag='none',cue='start',unit_task='AK',state='begin_sequence',ptype='ordered')
+        b_context.modify(status='occupied')
+        print 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+
+    def run_RP_PU(b_context='status:unoccupied planning_unit:none'):
+        #b_context='status:unoccupied planning_unit:RP'):
+        b_plan_unit.modify(planning_unit='RP',cuelag='none',cue='start',unit_task='RP',state='begin_sequence',ptype='ordered')
+        b_context.modify(status='occupied')
+        print 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR'
+
+    def run_HW_PU(b_context='status:unoccupied planning_unit:none'):
+        #b_context='status:unoccupied planning_unit:HW'):
+        b_plan_unit.modify(planning_unit='HW',cuelag='none',cue='start',unit_task='HW',state='begin_sequence',ptype='ordered')
+        b_context.modify(status='occupied')
+        print 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH'
+
+#######################################################
+########## unit task management productions ###########
+#######################################################
+
+    def setup_ordered_planning_unit(b_plan_unit='planning_unit:?planning_unit cuelag:?cuelag cue:?cue unit_task:?unit_task state:begin_sequence ptype:ordered'):
+        b_unit_task.set('unit_task:?unit_task state:start type:ordered')
+        b_plan_unit.modify(state='running')
+        print 'begin orderdered planning unit = ', planning_unit
+
+######################### these manage the sequence if it is an ordered planning unit
+
+    def request_next_unit_task(b_plan_unit='planning_unit:?planning_unit cuelag:?cuelag cue:?cue unit_task:?unit_task state:running',
+                               b_unit_task='unit_task:?unit_task state:finished type:ordered'):
+        DM.request('planning_unit:?planning_unit cue:?unit_task unit_task:? cuelag:?cue')
+        b_plan_unit.modify(state='retrieve')
+        print ' finished unit task = ', unit_task  
+
+    def retrieve_next_unit_task(b_plan_unit='state:retrieve',
+                                b_DM='planning_unit:?planning_unit cuelag:?cuelag cue:?cue!finished unit_task:?unit_task'):
+        #b_plan_unit.modify(state='running')
+        b_plan_unit.modify(planning_unit=planning_unit,cuelag=cuelag,cue=cue,unit_task=unit_task,state='running')
+        b_unit_task.set('unit_task:?unit_task state:start type:ordered')
+        print ' unit_task = ', unit_task
+       
+########################## these manage planning units that are finished ################### 
+
+    def last_unit_task_ordered_plan(b_context='have_plan:yes',
+                                    b_plan_unit='planning_unit:?planning_unit',
+                                    b_unit_task='unit_task:finished state:start type:ordered',
+                                    utility=5):  # high priority if a plan was generated in the planning unit
+        print 'finished planning unit=',planning_unit
+        b_unit_task.set('stop')
+        b_context.modify(status='unoccupied', have_plan='no') # have plan always needs to be re-set to no
+
+    def last_unit_task_ordered_noplan(b_plan_unit='planning_unit:?planning_unit',  
+                                      b_unit_task='unit_task:finished state:start type:ordered',
+                                      utility=1):  # by default no plan is generated
+        print 'finished planning unit=',planning_unit
+        b_unit_task.set('stop')
+        #b_plan_unit.modify(planning_unit='none')
+#        b_context.modify(planning_unit='none', have_plan='no') # have plan always needs to be re-set to no
+
+#################### Stop Program ######################
+
+    
+    def stop_production(b_unit_task='stop'):
+        print 'Task complete. Good bye!'
+        self.stop()
+
+
+#######################################################
+##################### unit task productions ################################################################################################################
+#######################################################
+
+        ###### AK UT ######
+
+# AK unit task AK-WM-SU-ZB-FJ
+
+## add condition to fire this production
+
+    def AK_ordered(b_unit_task='unit_task:AK state:start type:ordered'): ### this unit task is chosen to fire by planning unit
+        b_unit_task.modify(state='begin')
+        print 'start unit task AK'
+
+    ## the first production in the unit task must begin this way
+    def AK_start(b_unit_task='unit_task:AK state:begin type:?type'):
+        b_unit_task.set('unit_task:AK state:running2 type:?type')
+        b_method.set('method:response target:response content:1234 state:start')
+##        focus.set('AKstart')
+        print 'AK:1234'
+
+    ## body of unit task
+    #### RESPOND WM:
+    def AK_WM(b_unit_task='unit_task:AK state:running2 type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:1432 state:start')
+        b_unit_task.set('unit_task:AK state:running3 type:?type')
+        print 'WM:1432'
+
+    #### RESPOND SU:
+    def AK_SU(b_unit_task='unit_task:AK state:running3 type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:4123 state:start')
+        b_unit_task.set('unit_task:AK state:running4 type:?type')
+        print 'SU:4123'
+
+    #### RESPOND ZB:
+    def AK_ZB(b_unit_task='unit_task:AK state:running4 type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:2143 state:start')
+        b_unit_task.set('unit_task:AK state:running5 type:?type')
+        print 'ZB:2143'
+
+    ### RESPOND FJ
+    def AK_FJ(b_unit_task='unit_task:AK state:running5 type:?type',
+                   b_method='state:finished',
+                   focus='response_entered'):
+        b_method.set('method:response target:response content:3214 state:start')
+        ### FOCUS SET TO END
+        focus.set('AK_done')
+        b_unit_task.set('unit_task:AK state:end_task type:ordered')  ## this line ends the unit task
+        print 'FJ:3214'
+        print 'Ending Unit Task'
+
+    ### RUN GET CODE METH
+    ##### AK FINISH #####
+    ### Final step:
+    ## Finishing the unit task
+    def AK_finished_ordered(
+        b_method='state:finished',
+                                ## this line assumes waiting for the last method to finish
+                                focus='response_entered',
+                                b_unit_task='unit_task:AK state:end_task type:ordered',
+                                b_plan_unit='ptype:ordered'):
+        print 'finished unit task RP(ordered)'
+        b_unit_task.set('unit_task:AK state:finished type:ordered')
+
+############################################################################################################################################################
+
+#                    YP-FJ
+# RP unit task RP-SU<
+#                    ZB-WM
+
+
+# add condition to fire production 
+    def RP_ordered(b_unit_task='unit_task:RP state:start type:ordered'): ### this unit task is chosen to fire by planning unit
+        b_unit_task.modify(state='begin')
+        print 'start unit task RP'
+
+    ## the first production in the unit task must begin this way
+    def RP_start(b_unit_task='unit_task:RP state:begin type:?type'):
+        b_unit_task.set('unit_task:RP state:running type:?type')
+        b_method.set('method:response target:response content:4321 state:start')
+        focus.set('RPstart')
+        print 'RP:4321'
+        
+    ##### RP BODY: #####
+    ### PROMPT 1 - KNOWN, FAST
+    def RP_SU(b_unit_task='unit_task:RP state:running type:?type',
+                   b_method='state:finished'):
+        b_method.set('method:response target:response content:4123 state:start')
+        b_unit_task.set('unit_task:RP state:running2 type:?type')
+        print 'SU:4123'
+       
+        ## Prompt 1 = running perfect. 
+        
+    ##### RP PROMPT 2 #####
+    ### IDENTIFY -> RESPOND
+    ### ROUND 2 - TWO POSSIBLE, KNOWN, LAG
+    ### IDENTIFY:
+    def RP_identify2(b_unit_task='unit_task:RP state:running2 type:?type',
+                            focus='response_entered', b_method='state:finished'): 
+        b_method.set('method:get_code target:response content:0000 state:start')
+        focus.set('get_code')
+        b_unit_task.set('unit_task:RP state:runningC type:?type')
+        print 'waiting to see if YP or ZB'
+        print 'getting the code for second prompt...'        
+        
+    #### RESPOND YP:
+    def RP_YP(b_unit_task='unit_task:RP state:runningC type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:3412 state:start')
+        b_unit_task.set('unit_task:RP state:running3 type:?type')
+        print 'YP:3412'
+        # next is FJ
+
+
+    ### RESPOND ZB: 
+    def RP_ZB(b_unit_task='unit_task:RP state:runningC type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:2143 state:start')
+        b_unit_task.set('unit_task:RP state:running4 type:?type')
+        print 'ZB:2143'
+        # next is WM
+        ### RUN GET CODE METH
+        
+    ##### RP PROMPT 3 #####
+    ### ROUND 3:
+    ### BANG BANG
+                             
+    ### RESPOND FJ
+    def RP_FJ(b_unit_task='unit_task:RP state:running3 type:?type',
+                   focus='response_entered'):
+        b_method.set('method:response target:response content:3214 state:start')
+        ### FOCUS SET TO END
+        focus.set('RP_done')
+        b_unit_task.set('unit_task:RP state:end_task type:ordered')  ## this line ends the unit task
+        print 'FJ:3214'
+        print 'Ending Unit Task'
+
+    ### RESPOND WM
+    def RP_WM(b_unit_task='unit_task:RP state:running4 type:?type',
+                   focus='response_entered'):
+        b_method.set('method:response target:response content:1432 state:start')
+        ### FOCUS SET TO END
+        focus.set('RP_done')
+        b_unit_task.set('unit_task:RP state:end_task type:ordered')  ## this line ends the unit task
+        print 'WM:1432'
+        print 'Ending Unit Task'
+
+                ### RUN GET CODE METH
+    ##### RP FINISH #####
+    ### Final step:
+    ## Finishing the unit task
+    def RP_finished_ordered(
+        b_method='state:finished',
+                                ## this line assumes waiting for the last method to finish
+                                focus='response_entered',
+                                b_unit_task='unit_task:RP state:end_task type:ordered',
+                                b_plan_unit='ptype:ordered'):
+        print 'finished unit task RP(ordered)'
+        b_unit_task.set('unit_task:RP state:finished type:ordered')
+
+
+###########################################################################################################################################################
+
+
+#                     / FJ
+# HW unit task HW-YP--- ZB
+#                     \ SU
+
+# add condition to fire production         
+    def HW_ordered(b_unit_task='unit_task:HW state:start type:ordered'): ### this unit task is chosen to fire by planning unit
+        b_unit_task.modify(state='begin')
+        print 'start unit task HW'
+
+    ## the first production in the unit task must begin this way
+    def HW_start(b_unit_task='unit_task:HW state:begin type:?type'):
+        b_unit_task.set('unit_task:HW state:running type:?type')
+        b_method.set('method:response target:response content:2341 state:start')
+        focus.set('HWstart')
+        print 'HW:2341'
+
+        
+    ##### HW BODY: #####
+    ### PROMPT 1 - KNOWN, FAST
+    def HW_YP(b_unit_task='unit_task:HW state:running type:?type',
+                   b_method='state:finished'):
+        b_method.set('method:response target:response content:3412 state:start')
+        b_unit_task.set('unit_task:HW state:running2 type:?type')
+        print 'YP:3412'
+        
+        ## Prompt 1 = running perfect. 
+        
+    ##### HW PROMPT 2 #####
+    ### IDENTIFY -> RESPOND
+    ### ROUND 2 - THREE POSSIBLE, KNOWN, LAG
+    ### IDENTIFY:
+    def HW_identify3(b_unit_task='unit_task:HW state:running2 type:?type',
+                            focus='response_entered', b_method='state:finished'): 
+        b_method.set('method:get_code target:response content:0000 state:start')
+        focus.set('get_code')
+        b_unit_task.set('unit_task:HW state:runningC type:?type')
+        print 'waiting to see if FJ, SU, or ZB'
+        print 'getting the code for second prompt...'        
+        
+    #### FJ RESPOND:
+    def HW_FJ(b_unit_task='unit_task:HW state:runningC type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:3214 state:start')
+                ### FOCUS SET TO END
+        focus.set('HW_done')
+        b_unit_task.set('unit_task:HW state:end_task type:ordered')  ## this line ends the unit task
+        print 'FJ:3214'
+        print 'Ending Unit Task'
+
+
+    #### SU RESPOND:
+    def HW_SU(b_unit_task='unit_task:HW state:runningC type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:4123 state:start')
+                ### FOCUS SET TO END
+        focus.set('HW_done')
+        b_unit_task.set('unit_task:HW state:end_task type:ordered')  ## this line ends the unit task
+        print 'SU:4123'
+        print 'Ending Unit Task'
+
+    #### ZB RESPOND:
+    def HW_ZB(b_unit_task='unit_task:HW state:runningC type:?type',
+                            b_method='state:finished'):
+        b_method.set('method:response target:response content:2143 state:start')
+                ### FOCUS SET TO END
+        focus.set('HW_done')
+        b_unit_task.set('unit_task:HW state:end_task type:ordered')  ## this line ends the unit task
+        print 'ZB:2143'
+        print 'Ending Unit Task'
+
+                    ### RUN GET CODE METH
+    ##### HW FINISH #####
+    ### Final step:
+    ## Finishing the unit task
+    def HW_finished_ordered(
+        b_method='state:finished',
+                                ## this line assumes waiting for the last method to finish
+                                focus='response_entered',
+                                b_unit_task='unit_task:HW state:end_task type:ordered',
+                                b_plan_unit='ptype:ordered'):
+        print 'finished unit task HW(ordered)'
+        b_unit_task.set('unit_task:HW state:finished type:ordered')
+
+
+###################
+##### METHODS ##############################################################################################################################################
+###################
+
+
+    ### RESPONSE TYPE 2: IDENTIFY->RESPOND
+    ### get_code method ################################ (get_code)
+    # in the case where the next response depends on the code the agent must first read the code
+    # AKA - this is the instance where the agent is not predicting the next response
+    # but reading->chosing (not 'bang bang' but 'identify bang')
+    # The different pace times are accounting for the lag - LOW
+    # This method is inseperable, and ordered
+    ### PART A: IDENTIFY CODE
+
+    def get_code_vision(b_method='method:get_code target:?target content:?content state:start'):  # target is the chunk to be altered
+        motor.see_code()
+        b_method.modify(state='running')
+        print 'getting code'
+
+    def vision_slow_finished(motor_finst='state:see_code'):
+        motor.motor_finst_reset()
+        b_method.modify(state='finished')
+        focus.set('code:identified')
+        print 'I have spotted the target, I have the new code'
+
+    ### PART B: response known , hit it
+    # in this case the vision component took place already using the get_code method so this is only motor
+    def response(b_method='method:response target:?target content:?content state:start'):  # target is the chunk to be altered
+        motor.enter_response(target, content)
+        b_method.modify(state='running')
+        focus.set('enter_complete')
+        print 'entering response'
+        print 'target object = ', target
+
+    def response_entered2(b_method='method:?method target:?target state:running',
+                          motor_finst='state:enter_response',
+                          focus='enter_complete'):
+        b_method.modify(state='finished')
+        focus.set('response_entered')
+        motor.motor_finst_reset()
+        print 'I have altered', target
+
+
+        
+######## run model #########
+zelda = MyAgent()        # name the agent
+env = hyrule()           # name the environment
+env.agent = zelda        # put the agent in the environment
+ccm.log_everything(env)  # print out what happens in the environment
+env.run()                # run the environment
+ccm.finished()           # stop the environment 
